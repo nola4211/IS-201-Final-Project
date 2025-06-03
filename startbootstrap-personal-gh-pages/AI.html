@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tron Cycles</title>
+    <link rel="stylesheet" href="css/ai.css" />
+    <style>
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: red;
+            text-align: center;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #restartButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div id="gameOver" class="hidden">
+        Game Over<br>
+        <button id="restartButton">Restart</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const gridSize = 10;
+        const width = canvas.width / gridSize;
+        const height = canvas.height / gridSize;
+
+        const motorcycleIcon = new Image();
+        motorcycleIcon.src = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTVwFC7Ra_Cy9D-H1f2XszakDOsqeQ2TiI5Ng&s';
+
+        let player, enemy, trails, gameOver;
+
+        function initGame() {
+            player = {
+                x: 5,
+                y: 5,
+                dx: 1,
+                dy: 0,
+                color: 'cyan'
+            };
+
+            enemy = {
+                x: width - 10,
+                y: height - 10,
+                dx: -1,
+                dy: 0,
+                color: 'red'
+            };
+
+            trails = {};
+            gameOver = false;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('gameOver').classList.add('hidden');
+
+            trails[`${player.x},${player.y}`] = true;
+            trails[`${enemy.x},${enemy.y}`] = true;
+            drawTrail(player.x, player.y, player.color);
+            drawTrail(enemy.x, enemy.y, enemy.color);
+            drawBike(player.x, player.y);
+            drawBike(enemy.x, enemy.y);
+        }
+
+        function keyDownHandler(e) {
+            if (gameOver) return;
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (player.dy === 0) {
+                        player.dx = 0;
+                        player.dy = -1;
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (player.dy === 0) {
+                        player.dx = 0;
+                        player.dy = 1;
+                    }
+                    break;
+                case 'ArrowLeft':
+                    if (player.dx === 0) {
+                        player.dx = -1;
+                        player.dy = 0;
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (player.dx === 0) {
+                        player.dx = 1;
+                        player.dy = 0;
+                    }
+                    break;
+            }
+        }
+
+        function drawTrail(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+        }
+
+        function drawBike(x, y) {
+            ctx.drawImage(motorcycleIcon, x * gridSize, y * gridSize, gridSize, gridSize);
+        }
+
+        function updatePlayer(p) {
+            const prevX = p.x;
+            const prevY = p.y;
+
+            p.x += p.dx;
+            p.y += p.dy;
+
+            if (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height || trails[`${p.x},${p.y}`]) {
+                return true;
+            }
+
+            trails[`${p.x},${p.y}`] = true;
+            drawTrail(prevX, prevY, p.color);
+            drawBike(p.x, p.y);
+            return false;
+        }
+
+        function updateEnemyAI() {
+            const dirs = [{
+                dx: 1,
+                dy: 0
+            }, {
+                dx: -1,
+                dy: 0
+            }, {
+                dx: 0,
+                dy: 1
+            }, {
+                dx: 0,
+                dy: -1
+            }];
+            const possible = dirs.filter(dir => {
+                const nx = enemy.x + dir.dx;
+                const ny = enemy.y + dir.dy;
+                return (
+                    nx >= 0 && nx < width && ny >= 0 && ny < height &&
+                    !(nx === player.x && ny === player.y) &&
+                    !trails[`${nx},${ny}`]
+                );
+            });
+            if (possible.length > 0) {
+                const choice = possible[Math.floor(Math.random() * possible.length)];
+                enemy.dx = choice.dx;
+                enemy.dy = choice.dy;
+            } else {
+                enemy.dx = 0;
+                enemy.dy = 0;
+            }
+        }
+
+        function loop() {
+            if (gameOver) return;
+
+            updateEnemyAI();
+
+            const playerCrashed = updatePlayer(player);
+            const enemyCrashed = updatePlayer(enemy);
+
+            if (playerCrashed || enemyCrashed) {
+                gameOver = true;
+                document.getElementById('gameOver').classList.remove('hidden');
+                return;
+            }
+
+            setTimeout(loop, 100);
+        }
+
+        document.addEventListener('keydown', keyDownHandler);
+        document.getElementById('restartButton').addEventListener('click', () => {
+            initGame();
+            loop();
+        });
+
+        motorcycleIcon.onload = () => {
+            initGame();
+            loop();
+        };
+    </script>
+</body>
+
+</html>
